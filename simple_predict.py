@@ -32,10 +32,10 @@ def get_previous_extreme(timestamp):
 
     if filtered_extrema["min"].all():
         # min: return row with latest timestamp 
-        return filtered_extrema.tail(1)["timestamp"], "min"
+        return filtered_extrema.tail(1)["timestamp"] # , "min"
     elif filtered_extrema["max"].all():
         # max: return row with earliest timestamp
-        return filtered_extrema.head(1)["timestamp"], "max"
+        return filtered_extrema.head(1)["timestamp"] #, "max"
     else:
         raise ValueError("min and max detected in 6h interval")
 
@@ -91,7 +91,7 @@ plt.scatter(data.index, data['min'], c='r')
 plt.scatter(data.index, data['max'], c='g')
 plt.plot(data.index, data['water_level'])
 
-#plt.show()
+plt.show()
 #print(data.head(50))
 #print(data.describe())
 
@@ -129,10 +129,47 @@ create function to calculate current slope by current and successor value and
 extrema = data[["timestamp",  "min", "max"]].copy()
 extrema = extrema.dropna(subset=["min", "max"], how="all")
 
+# keep only the last occuring minimum (often minimum values repeat on a plateau)
+minima = extrema.dropna(subset=["min"], how="all").drop(columns=["max"])
+mask = (minima.shift(-1)["timestamp"]- minima["timestamp"]).dt.total_seconds() / 3600 > 1
+minima.loc[mask, "is_last_min"] = True
+minima = minima.dropna(subset="is_last_min", how="all")
+
+# keep only the first occuring maximum (often maximum values repeat on a plateau)
+maxima = extrema.dropna(subset=["max"], how="all").drop(columns=["min"])
+mask = (maxima["timestamp"] - maxima.shift(1)["timestamp"]).dt.total_seconds() / 3600 > 1
+maxima.loc[mask, "is_first_max"] = True
+maxima = maxima.dropna(subset="is_first_max", how="all")
+
+# merge min, max dataframes with data
+data = pd.merge(data, minima, how="outer")
+data = pd.merge(data, maxima, how="outer")
+
+"""
+time of last extreme
+where on series gets last matching row
+-> https://stackoverflow.com/questions/74797150/how-to-add-a-column-with-indices-of-the-last-occurrence-of-a-value-in-pandas
+"""
+data["time_last_min"] = data["timestamp"].where(data["is_last_min"].eq(True)).fillna(method="ffill")
+data["time_first_max"] = data["timestamp"].where(data["is_first_max"].eq(True)).fillna(method="bfill")
+data["time_between"] = (data["time_first_max"] - data["time_last_min"]).dt.total_seconds() / 60
+
+# clean data
+data = data[data["time_between"] < 7*60]
+
+# TODO: DROP all rows where time between maxima > 7h*60min
+
+analyze = data["time_between"].copy()
+
+print(analyze.describe())
+exit()
+
+
+
 # add time since last extreme and extrema category to data
 
 test_data = data.sample(1000)
-test_data["last_extreme"], test_data["test"] = test_data["timestamp"].apply(get_previous_extreme)
+test_data['c'] = test_data.apply(lambda row: get_previous_extreme(row["timestamp"]), axis=1)
 
 print(test_data)
 exit()
@@ -142,21 +179,6 @@ print(test_data["last_extreme_time"])
 test_data["last_extreme_time"] = pd.to_datetime(test_data["last_extreme_time"])
 test_data["time_since"] = (test_data["timestamp"] - test_data["last_extreme_time"]).dt.total_seconds()
 
-
-exit()
-
-
-random = data.sample(1)
-
-test = get_previous_extreme(random["timestamp"])
-
-
-print("test")
-print(test["min"])
-exit()
-
-print(data.head(100))
-print(extrema.head(100))
 
 
 
