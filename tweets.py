@@ -1,26 +1,47 @@
 import tweepy
 import os
 from dotenv import load_dotenv
+from string import Template
+import datetime
 
 load_dotenv()
 
-BEARER_TOKEN = os.environ.get("BEARER_TOKEN")
+BEARER_TOKEN_TWITTER = os.environ.get("BEARER_TOKEN_TWITTER")
 
 
-def get_latest_hadag_tweets():
-    print(BEARER_TOKEN)
-    
-    client = tweepy.Client(BEARER_TOKEN)
+def get_latest_hadag_tweet_today():
+    client = tweepy.Client(BEARER_TOKEN_TWITTER)
 
     response = client.get_users_tweets(id="1024984536688615424", tweet_fields="created_at")
     tweets = response.data
+    last_tweet_time = None
 
     for tweet in tweets:
         if "73" in tweet.text:
-            print(tweet.text)
-            print(tweet.created_at)
+            if not last_tweet_time:
+                last_tweet_time = tweet.created_at
+
+            if tweet.created_at >= last_tweet_time:
+                last_tweet_time = tweet.created_at
+                newest_tweet = tweet
+
+    
+    if datetime.datetime.today().day == newest_tweet.created_at.day:
+        msg_template = Template(
+            """HADAG twittert um $tweet_time \n
+            "$tweet_text" \n
+            """
+        )
+
+        return msg_template.safe_substitute({
+            "tweet_time": newest_tweet.created_at,
+            "tweet_text": newest_tweet.text
+        })
+    
+    return None
+
             
 
 if __name__ == "__main__":
-
-    get_latest_hadag_tweets()
+    print(BEARER_TOKEN_TWITTER)
+    print(get_latest_hadag_tweet_today())
