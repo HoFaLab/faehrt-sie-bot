@@ -37,6 +37,12 @@ class DisruptionPeriod:
     start_time: datetime.datetime
     end_time: datetime.datetime
 
+    def disruption_during_service_time(self):
+        return (
+            during_service_time(self.start_time)
+            or during_service_time(self.end_time)
+        )
+
 
 class TideData:
     data: Dict
@@ -127,15 +133,13 @@ class TideData:
 
         start_time = self.disruption_period.start_time
         end_time =  self.disruption_period.end_time
-
-        "Hello, {first} {last}".format(first='Joe')
     
         template = Template(
             """
-            *** WASSERSTANDSMELDUNG *** \n
+            🌊🌊🌊 WASSERSTANDSMELDUNG 🌊🌊🌊 \n
             Zwischen $start_time und $end_time Uhr: \n
-            Voraussichtlicher Wasserstand höher als $max_water_level cm über PNP. \n
-            In dieser Zeit wird wahrscheinlich nur die Ernst-August-Schleuse angefahren. \n
+            Voraussichtlicher Wasserstand höher als $max_water_level cm über PNP.
+            In dieser Zeit wird wahrscheinlich nur die Argentinienbrücke angefahren. \n
             $tomorrow_warning
             """
         )
@@ -150,10 +154,11 @@ class TideData:
 
     def make_tmrrw_warning(self) -> str:
         if self.check_extremes(self.forecast_extremes_tmmrw):
-            high_time = filter(lambda e: e["event"] == "HW", self.forecast_extremes_tmmrw)[0]["timestamp"]
+            high_time = next(filter(lambda e: e["event"] == "HW", self.forecast_extremes_tmmrw))["timestamp"]
             high_time = datetime.datetime.fromisoformat(high_time)
 
-            if during_service_time(high_time):
+            if during_service_time(high_time - datetime.timedelta(hours=1)) \
+                or + during_service_time(high_time + datetime.timedelta(hours=1)):
                 return "Erneutes Hochwasser morgen gegen {h}:{m} Uhr. Mehr Infos hier: {link}".format(
                     h=high_time.hour,
                     m=high_time.minute,

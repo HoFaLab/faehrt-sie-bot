@@ -1,10 +1,7 @@
-from string import Template
 import time
-import datetime
 from forecasts import TideData, check_for_new_data
 from telegram import post_message_to_telegram
 from tweets import get_latest_hadag_tweet_today
-from service_time import during_service_time
 
 
 """
@@ -25,27 +22,22 @@ from when to when is the tide to high / low?
 if __name__ == "__main__":
     post_message_to_telegram("started")
 
-
-    first_run = True
     last_twitter_message = None
     end_time_last_disruption = None
-    
-    tide_data = TideData()
+    tide_data = None
     
     while True:
-        # during ferry times: check if tide is too high
-        if during_service_time(datetime.datetime.now()):
-            if check_for_new_data(tide_data.forecast_creation_date) or first_run:
-                if hasattr(tide_data, 'disruption_period') \
-                   and during_service_time(tide_data.disruption_period.start_time):
-                    if first_run:
-                        post_message_to_telegram(tide_data.get_disruption_warn_msg())
-                    else:
-                        if end_time_last_disruption < tide_data.disruption_period.end_time:
-                            post_message_to_telegram(tide_data.get_disruption_warn_msg())
+        if not tide_data or check_for_new_data(tide_data.forecast_creation_date):
+            tide_data = TideData()
+            if hasattr(tide_data, 'disruption_period') \
+                and tide_data.disruption_period.disruption_during_service_time(): 
+                # check disruption period is already known.
+                if not end_time_last_disruption \
+                    or end_time_last_disruption < tide_data.disruption_period.end_time:
+                    post_message_to_telegram(tide_data.get_disruption_warn_msg())
 
-                    end_time_last_disruption = tide_data.disruption_period.end_time
-                
+                end_time_last_disruption = tide_data.disruption_period.end_time
+            
         # check tweets
         try:
             latest_tweet = get_latest_hadag_tweet_today()

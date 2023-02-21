@@ -14,7 +14,7 @@ def post_message_to_telegram(msg):
     print("posting to telegram at " + str(datetime.datetime.now()))
     print(msg)
 
-    msg = 'https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage?chat_id=' + CHAT_ID + '&parse_mode=Markdown&text=' + msg
+    msg = 'https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage?chat_id=' + CHAT_ID + '&text=' + msg
 
     try:
         response = requests.get(msg)

@@ -28,14 +28,15 @@ def get_latest_hadag_tweet_today():
     
     if datetime.datetime.today().day == newest_tweet.created_at.day:
         msg_template = Template(
-            """HADAG twittert um $tweet_time \n
-            "$tweet_text" \n
+            """🐦🐦🐦 HADAG twittert um $tweet_time 🐦🐦🐦 \n
+            $tweet_text $tweet_link \n
             """
         )
 
         return msg_template.safe_substitute({
-            "tweet_time": newest_tweet.created_at,
-            "tweet_text": newest_tweet.text
+            "tweet_time": newest_tweet.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "tweet_text": newest_tweet.text.replace('#', ''),
+            "tweet_link": "twitter.com/hadag_info"
         })
     
     return None
