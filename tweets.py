@@ -1,48 +1,50 @@
-import tweepy
-import os
-from dotenv import load_dotenv
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from datetime import datetime
+import time
+from typing import List
 from string import Template
-import datetime
 
-load_dotenv()
+def set_up_driver():
+    """Start web driver"""
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument("--window-size=1920,1080")
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.implicitly_wait(10)
+    return driver
 
-BEARER_TOKEN_TWITTER = os.environ.get("BEARER_TOKEN_TWITTER")
 
+def get_latest_hadag_tweet() -> List[str]:
+    driver = set_up_driver()
+    target_url = "https://twitter.com/hadag_info"
+    driver.get(target_url)
+    time.sleep(2)
 
-def get_latest_hadag_tweet_today():
-    client = tweepy.Client(BEARER_TOKEN_TWITTER)
+    resp = driver.page_source
+    driver.quit()
 
-    response = client.get_users_tweets(id="1024984536688615424", tweet_fields="created_at")
-    tweets = response.data
-    last_tweet_time = None
+    soup=BeautifulSoup(resp,'html.parser')
+    tweet_divs = soup.find_all("div",{"data-testid": "tweetText"})
 
-    for tweet in tweets:
-        if "73" in tweet.text:
-            if not last_tweet_time:
-                last_tweet_time = tweet.created_at
-
-            if tweet.created_at >= last_tweet_time:
-                last_tweet_time = tweet.created_at
-                newest_tweet = tweet
-
+    newest_tweet = [tweet.text for tweet in tweet_divs if "#Linie73" in tweet.text or "Linie 73" in tweet.text][0]
     
-    if datetime.datetime.today().day == newest_tweet.created_at.day:
-        msg_template = Template(
-            """🐦🐦🐦 HADAG twittert um $tweet_time 🐦🐦🐦 \n
-            $tweet_text $tweet_link \n
-            """
-        )
+    msg_template = Template(
+        """🐦🐦🐦 HADAG twittert um ca. $tweet_time 🐦🐦🐦 \n
+        $tweet_text $tweet_link \n
+        """
+    )
 
-        return msg_template.safe_substitute({
-            "tweet_time": newest_tweet.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "tweet_text": newest_tweet.text.replace('#', ''),
-            "tweet_link": "twitter.com/hadag_info"
-        })
+    return msg_template.safe_substitute({
+        "tweet_time": datetime.now().strftime("%H:%M"),
+        "tweet_text": newest_tweet.replace('#', ''),
+        "tweet_link": "twitter.com/hadag_info"
+    })
     
-    return None
-
-            
 
 if __name__ == "__main__":
-    print(BEARER_TOKEN_TWITTER)
-    print(get_latest_hadag_tweet_today())
+
+    print(get_latest_hadag_tweet())

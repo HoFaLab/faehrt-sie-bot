@@ -1,3 +1,4 @@
-pyorbital
-tweepy
 python-dotenv
+beautifulsoup4
+selenium
+requests
