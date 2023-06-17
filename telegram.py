@@ -9,6 +9,7 @@ load_dotenv()
 CHAT_ID = os.environ.get("CHAT_ID_TELEGRAM")
 BOT_TOKEN = os.environ.get("BOT_TOKEN_TELEGRAM")
 
+# TODO post message to maintainer
 
 def post_message_to_telegram(msg):
     print("posting to telegram at " + str(datetime.datetime.now()))

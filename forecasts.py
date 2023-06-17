@@ -51,6 +51,7 @@ class TideData:
     forecast_extremes_tmmrw: Dict
     forecast_detailed_values: Dict
     disruption_period: DisruptionPeriod
+    reminder_sent: bool = False
 
 
     def __init__(self):
@@ -138,8 +139,30 @@ class TideData:
             """
             🌊🌊🌊 WASSERSTANDSMELDUNG 🌊🌊🌊 \n
             Zwischen $start_time und $end_time Uhr: \n
-            Voraussichtlicher Wasserstand höher als $max_water_level cm über PNP.
             In dieser Zeit wird wahrscheinlich nur die Argentinienbrücke angefahren. \n
+            $tomorrow_warning
+            """
+        )
+
+        return template.safe_substitute({
+            "max_water_level": max_water_level,
+            "start_time": str(start_time.hour) + ":" + str(start_time.minute),
+            "end_time": str(end_time.hour) + ":" + str(end_time.minute),
+            "tomorrow_warning": self.make_tmrrw_warning()
+        })    
+    
+    #  returns a service disruption warning message
+    def get_reminder_msg(self):
+        if not self.is_time_to_remind():
+            return None
+        
+        start_time = self.disruption_period.start_time
+        end_time =  self.disruption_period.end_time
+    
+        template = Template(
+            """
+            ⏰⏰⏰ Erinnerung In 2h startet Hochwasser 🌊🌊🌊 \n
+            Zwischen $start_time und $end_time Uhr. Checkt auch Twitter. \n
             $tomorrow_warning
             """
         )
@@ -166,3 +189,10 @@ class TideData:
                 )
         
         return ""
+
+
+    def is_time_to_remind(self):
+        if self.disruption_period and self.disruption_period.disruption_during_service_time():
+            if datetime.timedelta(hours=2) + datetime.now() > self.disruption_period.start_time:
+                return True
+        return False

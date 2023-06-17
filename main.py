@@ -22,7 +22,7 @@ from when to when is the tide to high / low?
 
 """
 if __name__ == "__main__":
-    # post_message_to_telegram("started")
+    post_message_to_telegram("started")  # todo post to some admin group only
 
     last_twitter_message = None
     end_time_last_disruption = None
@@ -39,6 +39,10 @@ if __name__ == "__main__":
                 if not end_time_last_disruption \
                     or end_time_last_disruption < tide_data.disruption_period.end_time:
                     post_message_to_telegram(tide_data.get_disruption_warn_msg())
+                
+                if tide_data.is_time_to_remind() and not tide_data.reminder_sent():
+                    post_message_to_telegram(tide_data.get_reminder_msg())
+                    tide_data.reminder_sent = True
 
                 end_time_last_disruption = tide_data.disruption_period.end_time
             
@@ -52,7 +56,7 @@ if __name__ == "__main__":
                     last_twitter_message = latest_tweet
         except Exception as e:
             print(e)
-            post_message_to_telegram("Error while checking twitter", e)
+            # post_message_to_telegram("Error while checking twitter", e)
             pass
       
         time.sleep(120)
