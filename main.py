@@ -1,7 +1,7 @@
 import time
 from forecasts import TideData, check_for_new_data
 from telegram import post_message_to_telegram
-from tweets import get_latest_hadag_tweet_today
+from tweets import get_latest_tweet_for_line73
 
 
 """
@@ -20,9 +20,9 @@ from when to when is the tide to high / low?
 
 """
 if __name__ == "__main__":
-    post_message_to_telegram("started")  # todo post to some admin group only
+    post_message_to_telegram("started", post_to_admin_group=True)  # todo post to some admin group only
 
-    last_twitter_message = None
+    latest_known_tweet = None
     end_time_last_disruption = None
     tide_data = None
 
@@ -48,12 +48,12 @@ if __name__ == "__main__":
 
         # check tweets
         try:
-            latest_tweet = get_latest_hadag_tweet_today()
-            if last_twitter_message != latest_tweet:
-                post_message_to_telegram(latest_tweet)
-                last_twitter_message = latest_tweet
+            tweet_now = get_latest_tweet_for_line73()
+            if latest_known_tweet != tweet_now:
+                post_message_to_telegram(tweet_now.format_tweet_msg_for_telegram())
+                latest_known_tweet = tweet_now
         except Exception as e:
             print(e)
-            # post_message_to_telegram("Error while checking twitter", e)
+            post_message_to_telegram(f"Error while checking twitter: {e}", post_to_admin_group=True)
 
         time.sleep(60)
