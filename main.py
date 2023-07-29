@@ -1,47 +1,59 @@
-from datetime import datetime
 import time
-
-from timetables import next_ferry_from_landungsbruecken, next_ferry_from_whb
-
-# pegelnull zu seekartennull. unterschied 310cm
-def to_marine_chart(measurement):
-    return measurement - 310
+from forecasts import TideData, check_for_new_data
+from telegram import post_message_to_telegram
+from tweets import get_latest_tweet_for_line73
 
 
-if __name__ == '__main__':
+"""
+from when to when is the tide to high / low? 
+    -> starting time disruption
+    -> end time disruption
 
-    # todo integrate fahrplan
-    # todo integrate twitter
-    # todo integrate telegram
+     check if hwnw values are outside boudaries 
+        if so , iterate over array of forecasts.
+        -> save first time and value outside boundaries
+        -> save last time and value outside boundaries
+                    -> by checking if successor value is below boundaries
 
-    #todo niedrigwasser?
+    foward all tweets
+        add timeframe to tweet, if timeframe exists
 
-    # todo warn if water levels in last day unusually high , verglichen mit MThw # get time of next hochwasser to estimate highpoint
-    # sinus kurve mit normalpunkten und gezeitenzeiten
-    # modellierung abweichung
+"""
+if __name__ == "__main__":
+    post_message_to_telegram("started", post_to_admin_group=True)  # todo post to some admin group only
+
+    latest_known_tweet = None
+    end_time_last_disruption = None
+    tide_data = None
 
     while True:
-        current_info = get_current_info()
+        if not tide_data or check_for_new_data(tide_data.forecast_creation_date):
+            tide_data = TideData()
+            if (
+                hasattr(tide_data, "disruption_period")
+                and tide_data.disruption_period.disruption_during_service_time()
+            ):
+                # check disruption period is already known.
+                if (
+                    not end_time_last_disruption
+                    or end_time_last_disruption < tide_data.disruption_period.end_time
+                ):
+                    post_message_to_telegram(tide_data.get_disruption_warn_msg())
 
-        print(current_info['measurement'])
+                if tide_data.is_time_to_remind() and not tide_data.reminder_sent():
+                    post_message_to_telegram(tide_data.get_reminder_msg())
+                    tide_data.reminder_sent = True
 
-        # get next departure time, get water_level prediction_at_time
+                end_time_last_disruption = tide_data.disruption_period.end_time
 
+        # check tweets
+        try:
+            tweet_now = get_latest_tweet_for_line73()
+            if latest_known_tweet != tweet_now:
+                post_message_to_telegram(tweet_now.format_tweet_msg_for_telegram())
+                latest_known_tweet = tweet_now
+        except Exception as e:
+            print(e)
+            post_message_to_telegram(f"Error while checking twitter: {e}", post_to_admin_group=True)
 
-        # todo integrate timetable to see if ferry is going later -> tide might fall
-        if current_info['measurement'] > 420:
-            print("the tide is too high")
-
-        elif current_info['measurement'] > 410 and current_info['trend'] == 1:
-            print("the tide is high and not falling")
-
-        else:
-            print('the ferry will go')
-
-        # todo integrate timetable
-
-        time.sleep(300)
-
-
-
-
+        time.sleep(60)

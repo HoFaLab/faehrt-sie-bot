@@ -1,4 +1,9 @@
+.venv
 venv
+.env
+.env*
 .idea
 .vscode
 __pycache__
+
+setup.cfg

@@ -1,4 +1,4 @@
-FROM python:3.10
+FROM python:3.11
 
 WORKDIR /opt/ferry
 
@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir --upgrade -r /opt/ferry/requirements.txt
 
 COPY . /opt/ferry
 
-CMD ["python", "download_data.py"]
+CMD ["python", "main.py"]
