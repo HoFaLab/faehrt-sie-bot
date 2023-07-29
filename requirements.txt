@@ -1,3 +1,2 @@
 pyorbital
-tweepy
 python-dotenv
