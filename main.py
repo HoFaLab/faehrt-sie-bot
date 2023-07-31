@@ -32,6 +32,7 @@ if __name__ == "__main__":
             if (
                 hasattr(tide_data, "disruption_period")
                 and tide_data.disruption_period.disruption_during_service_time()
+                and tide_data.disruption_period.get_disruption_length_minutes() > 30
             ):
                 # check disruption period is already known.
                 if (

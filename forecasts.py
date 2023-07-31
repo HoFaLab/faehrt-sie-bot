@@ -8,7 +8,7 @@ from service_time import during_service_time
 
 
 data_url = "https://wasserstand-nordsee.bsh.de/data/DE__508P.json"
-max_water_level = 720
+max_water_level = 730
 
 
 # get forecasts data
@@ -42,6 +42,9 @@ class DisruptionPeriod:
         return during_service_time(self.start_time) or during_service_time(
             self.end_time
         )
+    
+    def get_disruption_length_minutes(self):
+        return (self.end_time - self.start_time).total_seconds() / 60
 
 
 class TideData:
@@ -200,7 +203,7 @@ class TideData:
             )
             and (
                 # is it within the next 2 hours?
-                datetime.timedelta(hours=2) + datetime.now()
+                datetime.timedelta(hours=2) + datetime.datetime.now()
                 > self.disruption_period.start_time
             )
         )
