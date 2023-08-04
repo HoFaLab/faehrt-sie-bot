@@ -203,7 +203,7 @@ class TideData:
             )
             and (
                 # is it within the next 2 hours?
-                datetime.timedelta(hours=2) + datetime.datetime.now()
+                datetime.timedelta(hours=2) + datetime.datetime.now(self.disruption_period.start_time.tzinfo)
                 > self.disruption_period.start_time
             )
         )
