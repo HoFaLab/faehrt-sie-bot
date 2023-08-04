@@ -54,13 +54,18 @@ def get_latest_tweet_for_line73() -> Tweet:
         "showReplies": "true",
     }
     response = requests.get(
-        "https://syndication.twitter.com/srv/timeline-profile/screen-name/hadag_info",
+        "https://syndication.twitter.com/srv/timeline-profile/screen-name/hadag_info?showReplies=true",
         params=params,
         headers=headers,
     )
 
     soup = BeautifulSoup(response.text, features="html.parser")
-    data = json.loads(soup.find("script", id="__NEXT_DATA__").text)
+    try:
+        data = json.loads(soup.find("script", id="__NEXT_DATA__").text)
+    except Exception:
+        print("cannot read twitter stream")
+        return None
+
     entries = data["props"]["pageProps"]["timeline"]["entries"]
     for entry in entries:
         if entry["type"] == "tweet":
