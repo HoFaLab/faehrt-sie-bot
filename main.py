@@ -44,7 +44,7 @@ if __name__ == "__main__":
                     ):
                         post_message_to_telegram(tide_data.get_disruption_warn_msg())
 
-                    if tide_data.is_time_to_remind() and not tide_data.reminder_sent():
+                    if tide_data.is_time_to_remind() and not tide_data.reminder_sent:
                         post_message_to_telegram(tide_data.get_reminder_msg())
                         tide_data.reminder_sent = True
 
