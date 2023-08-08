@@ -2,3 +2,4 @@ pyorbital
 python-dotenv
 beautifulsoup4
 requests
+selenium

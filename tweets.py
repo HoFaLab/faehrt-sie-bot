@@ -5,16 +5,45 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import datetime
+import time
 
 from string import Template
 from dataclasses import dataclass
 from typing import List
+from selenium import webdriver
 
 
-load_dotenv()
+def set_up_selenium_driver() -> webdriver:
+    """Start web driver"""
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument("--window-size=1920,1080")
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.implicitly_wait(10)
+    
+    return driver
 
-BEARER_TOKEN_TWITTER = os.environ.get("BEARER_TOKEN_TWITTER")
-latest_tweet = None
+
+def get_twitter_content_json(driver: webdriver) -> dict:
+    target_url = "https://syndication.twitter.com/srv/timeline-profile/screen-name/hadag_info?showReplies=true"
+    driver.get(target_url)
+    time.sleep(2)
+
+    response = driver.page_source
+    
+    soup = BeautifulSoup(response, "html.parser")
+
+    try:
+        data = json.loads(soup.find("script", id="__NEXT_DATA__").text)
+    except Exception:
+        print("cannot read twitter stream")
+        return None
+    
+    return data
+
 
 
 @dataclass
@@ -41,32 +70,8 @@ class Tweet:
         )
 
 
-def get_latest_tweet_for_line73() -> Tweet:
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
-        "Accept": "text/json,application/json,application/json;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "de-DE,en;q=0.5",
-        # 'Accept-Encoding': 'gzip, deflate, br',
-        "Connection": "keep-alive",
-    }
-
-    params = {
-        "showReplies": "true",
-    }
-    response = requests.get(
-        "https://syndication.twitter.com/srv/timeline-profile/screen-name/hadag_info?showReplies=true",
-        params=params,
-        headers=headers,
-    )
-
-    soup = BeautifulSoup(response.text, features="html.parser")
-    try:
-        data = json.loads(soup.find("script", id="__NEXT_DATA__").text)
-    except Exception:
-        print("cannot read twitter stream")
-        return None
-
-    entries = data["props"]["pageProps"]["timeline"]["entries"]
+def get_latest_tweet_for_line73(twitter_content_json: dict) -> Tweet:
+    entries = twitter_content_json["props"]["pageProps"]["timeline"]["entries"]
     for entry in entries:
         if entry["type"] == "tweet":
             tweet = entry["content"]["tweet"]
@@ -81,5 +86,11 @@ def get_latest_tweet_for_line73() -> Tweet:
 
 
 if __name__ == "__main__":
-    print(BEARER_TOKEN_TWITTER)
-    print(get_latest_tweet_for_line73().get_timestamp_as_datetime())
+
+    driver = set_up_selenium_driver()
+    while True:
+
+        twitter_content_json = get_twitter_content_json(driver)
+        print(get_latest_tweet_for_line73(twitter_content_json).get_timestamp_as_datetime())
+
+        time.sleep(5)
