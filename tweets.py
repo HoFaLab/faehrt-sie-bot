@@ -45,7 +45,6 @@ def get_twitter_content_json(driver: webdriver) -> dict:
     return data
 
 
-
 @dataclass
 class Tweet:
     created_at: str
