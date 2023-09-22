@@ -57,7 +57,7 @@ if __name__ == "__main__":
         try:
             twitter_content_json = get_twitter_content_json(driver)
             tweet_now = get_latest_tweet_for_line73(twitter_content_json)
-            if latest_known_tweet != tweet_now:
+            if tweet_now and latest_known_tweet != tweet_now:
                 post_message_to_telegram(tweet_now.format_tweet_msg_for_telegram())
                 latest_known_tweet = tweet_now
         except Exception as e:

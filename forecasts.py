@@ -151,9 +151,6 @@ class TideData:
 
     #  returns a service disruption warning message
     def get_reminder_msg(self):
-        if not self.is_time_to_remind():
-            return None
-
         return self.make_msg(
             """
             ⏰⏰⏰ Erinnerung In 2h startet Hochwasser 🌊🌊🌊 \n

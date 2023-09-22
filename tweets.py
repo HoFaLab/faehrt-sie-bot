@@ -90,6 +90,9 @@ if __name__ == "__main__":
     while True:
 
         twitter_content_json = get_twitter_content_json(driver)
-        print(get_latest_tweet_for_line73(twitter_content_json).get_timestamp_as_datetime())
-
+        if tweet := get_latest_tweet_for_line73(twitter_content_json):
+            print(tweet.get_timestamp_as_datetime())
+        else:
+            print(twitter_content_json)
+            print(twitter_content_json["props"]["pageProps"]["timeline"]["entries"])
         time.sleep(5)
