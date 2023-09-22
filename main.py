@@ -1,7 +1,7 @@
 import time
 from forecasts import TideData, check_for_new_data
 from telegram import post_message_to_telegram
-from tweets import get_latest_tweet_for_line73, set_up_selenium_driver, get_twitter_content_json
+from tweets import get_latest_tweet
 
 
 """
@@ -20,9 +20,10 @@ from when to when is the tide to high / low?
 
 """
 if __name__ == "__main__":
-    post_message_to_telegram("started", post_to_admin_group=True)  # todo post to some admin group only
+    post_message_to_telegram(
+        "started", post_to_admin_group=True
+    )  # todo post to some admin group only
 
-    driver = set_up_selenium_driver()
     latest_known_tweet = None
     end_time_last_disruption = None
     tide_data = None
@@ -40,7 +41,8 @@ if __name__ == "__main__":
                     # check disruption period is already known.
                     if (
                         not end_time_last_disruption
-                        or end_time_last_disruption < tide_data.disruption_period.end_time
+                        or end_time_last_disruption
+                        < tide_data.disruption_period.end_time
                     ):
                         post_message_to_telegram(tide_data.get_disruption_warn_msg())
 
@@ -51,17 +53,22 @@ if __name__ == "__main__":
                     end_time_last_disruption = tide_data.disruption_period.end_time
         except Exception as e:
             print(e)
-            post_message_to_telegram(f"Error while checking tide: {e}", post_to_admin_group=True)
+            post_message_to_telegram(
+                f"Error while checking tide: {e}", post_to_admin_group=True
+            )
 
         # check tweets
         try:
-            twitter_content_json = get_twitter_content_json(driver)
-            tweet_now = get_latest_tweet_for_line73(twitter_content_json)
-            if tweet_now and latest_known_tweet != tweet_now:
+            if tweet_now := get_latest_tweet():
+                if latest_known_tweet and latest_known_tweet.full_text == tweet_now.full_text:
+                    # tweet already known
+                    continue
                 post_message_to_telegram(tweet_now.format_tweet_msg_for_telegram())
                 latest_known_tweet = tweet_now
         except Exception as e:
             print(e)
-            post_message_to_telegram(f"Error while checking twitter: {e}", post_to_admin_group=True)
+            post_message_to_telegram(
+                f"Error while checking twitter: {e}", post_to_admin_group=True
+            )
 
         time.sleep(60)
