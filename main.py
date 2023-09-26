@@ -62,6 +62,8 @@ if __name__ == "__main__":
             if tweet_now := get_latest_tweet():
                 if latest_known_tweet and latest_known_tweet.full_text == tweet_now.full_text:
                     # tweet already known
+                    print("Tweet already known")
+                    time.sleep(180)
                     continue
                 post_message_to_telegram(tweet_now.format_tweet_msg_for_telegram())
                 latest_known_tweet = tweet_now
@@ -70,5 +72,4 @@ if __name__ == "__main__":
             post_message_to_telegram(
                 f"Error while checking twitter: {e}", post_to_admin_group=True
             )
-
-        time.sleep(60)
+            time.sleep(180)

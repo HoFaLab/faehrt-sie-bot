@@ -4,6 +4,7 @@ import datetime
 
 from string import Template
 from dataclasses import dataclass
+import random
 
 
 @dataclass
@@ -40,7 +41,23 @@ def get_latest_tweet() -> Tweet:
         "Sec-Fetch-User": "?1",
     }
 
-    response = requests.get("https://nitter.net/Hadag_info", headers=headers)
+    urls = [
+        # "https://nitter.net/Hadag_info",
+        "https://nitter.cz/search?f=tweets&q=hadag_info",
+        "https://nitter.unixfox.eu/search?f=tweets&q=Hadag_info",
+        "https://nitter.privacydev.net/search?f=tweets&q=hadag_info",
+        "https://nitter.poast.org/search?f=tweets&q=hadag_info",
+        "https://nitter.salastil.com/search?f=tweets&q=hadag_info",
+        "https://nitter.perennialte.ch/search?f=tweets&q=hadag_info",
+        "https://nitter.services.woodland.cafe/search?f=tweets&q=hadag_info",
+        "https://nitter.d420.de/search?f=tweets&q=hadag_info",
+        "https://nitter.poast.org/search?f=tweets&q=hadag_info",
+        "https://nitter.privacydev.net/search?f=tweets&q=hadag_info"
+    ]
+
+    url = random.choice(urls)
+    print(f"checking nitter url {url}")
+    response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, "html.parser")
     tweets = soup.find_all(class_="tweet-content media-body")
 
@@ -51,6 +68,7 @@ def get_latest_tweet() -> Tweet:
     
     if relevants_tweets:
         newest_tweet = relevants_tweets[0]
+        print(f"newest tweet {newest_tweet.text}")
         return Tweet(datetime.datetime.now(), newest_tweet.text)
 
 
