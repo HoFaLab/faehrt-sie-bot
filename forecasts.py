@@ -8,7 +8,7 @@ from service_time import during_service_time
 
 
 data_url = "https://wasserstand-nordsee.bsh.de/data/DE__508P.json"
-max_water_level = 730
+max_water_level = 750
 
 
 # get forecasts data
