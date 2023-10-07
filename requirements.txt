@@ -2,3 +2,5 @@ pyorbital
 python-dotenv
 beautifulsoup4
 requests
+pytz
+pytest

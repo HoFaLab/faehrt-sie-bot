@@ -1,7 +1,31 @@
+import datetime
 import time
+
+from bs4 import BeautifulSoup
+
 from forecasts import TideData, check_for_new_data
+from nitter_soup import get_nitter_soup
 from telegram import post_message_to_telegram
-from tweets import get_latest_tweet
+from tweets import Tweet, find_latest_tweet_for_line_73_in_soup
+from typing import Optional
+from pytz import timezone
+
+
+def find_newer_tweet(soup: BeautifulSoup, known_tweet: Optional[Tweet]) -> Tweet:
+    """
+    returns any tweet newer than the latest known tweet
+    """
+    if tweet_now := find_latest_tweet_for_line_73_in_soup(soup):
+        # latest_tweet == None -> bot was likely restarted
+        if not known_tweet:
+            # do not send outdated tweets
+            return tweet_now
+        if tweet_now.created_at > known_tweet.created_at:
+            # found a tweet newer than the latest known
+            return tweet_now
+        else:
+            # tweet already known
+            print("Tweet already known")
 
 
 """
@@ -34,15 +58,15 @@ if __name__ == "__main__":
             if not tide_data or check_for_new_data(tide_data.forecast_creation_date):
                 tide_data = TideData()
                 if (
-                    hasattr(tide_data, "disruption_period")
-                    and tide_data.disruption_period.disruption_during_service_time()
-                    and tide_data.disruption_period.get_disruption_length_minutes() > 30
+                        hasattr(tide_data, "disruption_period")
+                        and tide_data.disruption_period.disruption_during_service_time()
+                        and tide_data.disruption_period.get_disruption_length_minutes() > 30
                 ):
                     # check disruption period is already known.
                     if (
-                        not end_time_last_disruption
-                        or end_time_last_disruption
-                        < tide_data.disruption_period.end_time
+                            not end_time_last_disruption
+                            or end_time_last_disruption
+                            < tide_data.disruption_period.end_time
                     ):
                         post_message_to_telegram(tide_data.get_disruption_warn_msg())
 
@@ -59,17 +83,15 @@ if __name__ == "__main__":
 
         # check tweets
         try:
-            if tweet_now := get_latest_tweet():
-                if latest_known_tweet and latest_known_tweet.full_text == tweet_now.full_text:
-                    # tweet already known
-                    print("Tweet already known")
-                    time.sleep(180)
-                    continue
-                post_message_to_telegram(tweet_now.format_tweet_msg_for_telegram())
-                latest_known_tweet = tweet_now
+            soup = get_nitter_soup()
+            if newer_tweet := find_newer_tweet(soup, latest_known_tweet):
+                if newer_tweet.is_younger_than_2_hours():
+                    post_message_to_telegram(newer_tweet.format_tweet_msg_for_telegram())
+                latest_known_tweet = newer_tweet
         except Exception as e:
             print(e)
             post_message_to_telegram(
                 f"Error while checking twitter: {e}", post_to_admin_group=True
             )
-            time.sleep(180)
+
+        time.sleep(180)

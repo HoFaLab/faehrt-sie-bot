@@ -1,15 +1,15 @@
-import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 import datetime
+from pytz import timezone
 
 from string import Template
 from dataclasses import dataclass
-import random
+from typing import Optional
 
 
 @dataclass
 class Tweet:
-    created_at: str
+    created_at: datetime.datetime
     full_text: str
 
     def format_tweet_msg_for_telegram(self):
@@ -21,56 +21,31 @@ class Tweet:
 
         return msg_template.safe_substitute(
             {
-                "tweet_time": self.created_at.strftime("%H:%M"),
+                "tweet_time": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                 "tweet_text": self.full_text.replace("#", ""),
             }
         )
 
-
-def get_latest_tweet() -> Tweet:
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        # 'Accept-Encoding': 'gzip, deflate, br',
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-    }
-
-    urls = [
-        # "https://nitter.net/Hadag_info",
-        "https://nitter.cz/search?f=tweets&q=hadag_info",
-        "https://nitter.unixfox.eu/search?f=tweets&q=Hadag_info",
-        "https://nitter.privacydev.net/search?f=tweets&q=hadag_info",
-        "https://nitter.poast.org/search?f=tweets&q=hadag_info",
-        "https://nitter.salastil.com/search?f=tweets&q=hadag_info",
-        "https://nitter.perennialte.ch/search?f=tweets&q=hadag_info",
-        "https://nitter.services.woodland.cafe/search?f=tweets&q=hadag_info",
-        "https://nitter.d420.de/search?f=tweets&q=hadag_info",
-        "https://nitter.poast.org/search?f=tweets&q=hadag_info",
-        "https://nitter.privacydev.net/search?f=tweets&q=hadag_info"
-    ]
-
-    url = random.choice(urls)
-    print(f"checking nitter url {url}")
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.content, "html.parser")
-    tweets = soup.find_all(class_="tweet-content media-body")
-
-    def tweet_contains_73(tweet):
-        return "73" in tweet.text
-
-    relevants_tweets = [tweet for tweet in tweets if tweet_contains_73(tweet)]
-    
-    if relevants_tweets:
-        newest_tweet = relevants_tweets[0]
-        print(f"newest tweet {newest_tweet.text}")
-        return Tweet(datetime.datetime.now(), newest_tweet.text)
+    def is_younger_than_2_hours(self):
+        return self.created_at + datetime.timedelta(2) < datetime.datetime.now(tz=timezone("Europe/Berlin"))
 
 
-if __name__ == "__main__":
-    print(get_latest_tweet().full_text)
+def get_tweet_time_from_tag(tweet: Tag) -> datetime.datetime:
+    date_string = tweet.find(class_="tweet-date").find("a").get("title")
+    tweet_time = datetime.datetime.strptime(date_string, "%b %d, %Y · %H:%M %p %Z")
+    tweet_time = tweet_time.replace(tzinfo=timezone("UTC"))
+
+    return tweet_time.astimezone(timezone('Europe/Berlin'))
+
+
+def find_latest_tweet_for_line_73_in_soup(soup: BeautifulSoup) -> Optional[Tweet]:
+    tweets = soup.find_all(class_="tweet-body")
+
+    for tweet in tweets:
+        tweet_text_div = tweet.find(class_="tweet-content media-body")
+        tweet_text = tweet_text_div.text
+
+        if "73" in tweet_text:
+            tweet_time = get_tweet_time_from_tag(tweet)
+
+            return Tweet(tweet_time, tweet_text)
