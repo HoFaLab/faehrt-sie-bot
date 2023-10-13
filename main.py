@@ -1,6 +1,7 @@
 import datetime
 import time
 
+import pytz
 from bs4 import BeautifulSoup
 
 from forecasts import TideData, check_for_new_data
@@ -8,7 +9,6 @@ from nitter_soup import get_nitter_soup
 from telegram import post_message_to_telegram
 from tweets import Tweet, find_latest_tweet_for_line_73_in_soup
 from typing import Optional
-from pytz import timezone
 
 
 def find_newer_tweet(soup: BeautifulSoup, known_tweet: Optional[Tweet]) -> Tweet:
@@ -23,9 +23,13 @@ def find_newer_tweet(soup: BeautifulSoup, known_tweet: Optional[Tweet]) -> Tweet
         if tweet_now.created_at > known_tweet.created_at:
             # found a tweet newer than the latest known
             return tweet_now
-        else:
-            # tweet already known
-            print("Tweet already known")
+
+        # tweet already known
+        print(datetime.datetime.now(tz=pytz.timezone("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S"))
+        print("Tweet already known")
+        print(f" known_tweet {known_tweet}")
+        print(f" tweet_now {tweet_now}")
+            
 
 
 """
