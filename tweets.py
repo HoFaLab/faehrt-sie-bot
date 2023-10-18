@@ -27,7 +27,7 @@ class Tweet:
         )
 
     def is_younger_than_2_hours(self):
-        return self.created_at + datetime.timedelta(2) < datetime.datetime.now(tz=timezone("Europe/Berlin"))
+        return self.created_at + datetime.timedelta(hours=2) > datetime.datetime.now(tz=timezone("Europe/Berlin"))
 
 
 def get_tweet_time_from_tag(tweet: Tag) -> datetime.datetime:
