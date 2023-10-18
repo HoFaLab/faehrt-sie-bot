@@ -16,12 +16,12 @@ def find_newer_tweet(soup: BeautifulSoup, known_tweet: Optional[Tweet]) -> Tweet
     returns any tweet newer than the latest known tweet
     """
     if tweet_now := find_latest_tweet_for_line_73_in_soup(soup):
-        # latest_tweet == None -> bot was likely restarted
         if not known_tweet:
-            # do not send outdated tweets
             return tweet_now
+
         if tweet_now.created_at > known_tweet.created_at:
             # found a tweet newer than the latest known
+            print(f"new tweet found. tweet created at {tweet_now.created_at}")
             return tweet_now
 
         # tweet already known
