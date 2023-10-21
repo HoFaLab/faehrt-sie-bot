@@ -32,7 +32,7 @@ class Tweet:
 
 def get_tweet_time_from_tag(tweet: Tag) -> datetime.datetime:
     date_string = tweet.find(class_="tweet-date").find("a").get("title")
-    tweet_time = datetime.datetime.strptime(date_string, "%b %d, %Y · %H:%M %p %Z")
+    tweet_time = datetime.datetime.strptime(date_string, "%b %d, %Y · %I:%M %p %Z")
     tweet_time = tweet_time.replace(tzinfo=timezone("UTC"))
 
     return tweet_time.astimezone(timezone('Europe/Berlin'))
