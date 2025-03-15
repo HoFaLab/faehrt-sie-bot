@@ -1,35 +1,11 @@
-import datetime
+import threading
 import time
 
-import pytz
-from bs4 import BeautifulSoup
-
 from forecasts import TideData, check_for_new_data
-from nitter_soup import get_nitter_soup
+from mqtt_mobility_signage import mqtt_client_loop
 from telegram import post_message_to_telegram
-from tweets import Tweet, find_latest_tweet_for_line_73_in_soup
-from typing import Optional
 
 
-def find_newer_tweet(soup: BeautifulSoup, known_tweet: Optional[Tweet]) -> Tweet:
-    """
-    returns any tweet newer than the latest known tweet
-    """
-    if tweet_now := find_latest_tweet_for_line_73_in_soup(soup):
-        if not known_tweet:
-            return tweet_now
-
-        if tweet_now.created_at > known_tweet.created_at:
-            # found a tweet newer than the latest known
-            print(f"new tweet found. tweet created at {tweet_now.created_at}")
-            return tweet_now
-
-        # tweet already known
-        print(datetime.datetime.now(tz=pytz.timezone("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S"))
-        print("Tweet already known")
-        print(f" known_tweet {known_tweet}")
-        print(f" tweet_now {tweet_now}")
-            
 
 
 """
@@ -52,7 +28,11 @@ if __name__ == "__main__":
         "started", post_to_admin_group=True
     )  # todo post to some admin group only
 
-    latest_known_tweet = None
+    # Start mqtt connection for HADAG updates in separate thread
+    mqtt_monitor = threading.Thread(target=mqtt_client_loop, daemon=True)
+    mqtt_monitor.start()
+
+    # Monitor tides
     end_time_last_disruption = None
     tide_data = None
 
@@ -85,17 +65,4 @@ if __name__ == "__main__":
                 f"Error while checking tide: {e}", post_to_admin_group=True
             )
 
-        # check tweets
-        try:
-            soup = get_nitter_soup()
-            if newer_tweet := find_newer_tweet(soup, latest_known_tweet):
-                if newer_tweet.is_younger_than_2_hours():
-                    post_message_to_telegram(newer_tweet.format_tweet_msg_for_telegram())
-                latest_known_tweet = newer_tweet
-        except Exception as e:
-            print(e)
-            post_message_to_telegram(
-                f"Error while checking twitter: {e}", post_to_admin_group=True
-            )
-
-        time.sleep(180)
+            time.sleep(180)

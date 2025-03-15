@@ -1,6 +1,6 @@
 pyorbital
 python-dotenv
-beautifulsoup4
 requests
+paho-mqtt
 pytz
 pytest
