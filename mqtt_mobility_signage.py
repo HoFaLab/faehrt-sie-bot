@@ -72,6 +72,12 @@ def get_departures_for_station(all_departure_info:dict, station_main_label: str)
 
     for dep in departures:
         dep["day"] = datetime.now().day
+        try:
+            for delete_me in  [key for key in dep.keys() if key not in ["delay", "delay_0", "cancelled", "datetime", "day"]]:
+                # del changing, but unncessary props that make comparison hard
+                del dep[delete_me]
+        except:
+            continue
 
     return departures
 
@@ -117,16 +123,16 @@ def warn_delays_or_cancellations(payload):
     [{'city': 'hamburg', 'datetime': '21:45', 'delay_0': '0', 'destination': 'Landungsbrücken', 'img': './images/73.svg', 'label-1': 'Landungsbrücken', 'line': '73', 'providerName': 'hvv', 'time': 8, 'timeMinForSorting': 8}]
     """
 
-def check_for_depature_updates(received_departures:dict):
+def check_for_depature_updates(received_departures:List[dict]):
     updates = []
     for new_dep_info in received_departures:
         timestr = new_dep_info.get("datetime")
         old_dep_info = departure_info.get(timestr)
-        # save new inof
+        # save new info
         departure_info[timestr] = new_dep_info
 
         if old_dep_info != new_dep_info:
-                updates.append(new_dep_info)
+            updates.append(new_dep_info)
 
         # return new/changed departures
         return updates
