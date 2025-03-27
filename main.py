@@ -34,13 +34,12 @@ if __name__ == "__main__":
 
     # Monitor tides
     end_time_last_disruption = None
-    tide_data = None
+    tide_data = TideData()
 
     while True:
         # check tide
         try:
-            if not tide_data or check_for_new_data(tide_data.forecast_creation_date):
-                tide_data = TideData()
+            if check_for_new_data(tide_data.forecast_creation_date):
                 if (
                         hasattr(tide_data, "disruption_period")
                         and tide_data.disruption_period.disruption_during_service_time()

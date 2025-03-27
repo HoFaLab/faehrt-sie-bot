@@ -57,9 +57,8 @@ class TideData:
     reminder_sent: bool = False
 
     def __init__(self):
-        self.data = download_data()
-
-        if self.data == download_data():
+        if data := download_data():
+            self.data = data
             self.forecast_creation_date = datetime.datetime.fromisoformat(
                 self.data["creation_forecast"]
             )
@@ -199,8 +198,8 @@ class TideData:
                 and self.disruption_period.disruption_during_service_time()
             )
             and (
-                # is it within the next 2 hours?
-                datetime.timedelta(hours=2) + datetime.datetime.now(self.disruption_period.start_time.tzinfo)
+                # is it within the next 3 hours?
+                datetime.timedelta(hours=3) + datetime.datetime.now(self.disruption_period.start_time.tzinfo)
                 > self.disruption_period.start_time
             )
         )
