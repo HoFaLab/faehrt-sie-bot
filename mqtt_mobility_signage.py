@@ -6,6 +6,7 @@ import json
 import time
 import argparse
 
+from departure_info import DepartureInfo
 from telegram import post_message_to_telegram
 
 # MQTT Configuration
@@ -34,7 +35,7 @@ topics = [
     #f"/content/media/{COMPANY_ID}/{DEVICE_ID}"
 ]
 
-departure_info = {}
+known_departure_infos: List[DepartureInfo] = {}
 
 
 def on_connect(client, userdata, flags, rc):
@@ -64,78 +65,110 @@ def on_message(client, userdata, msg):
     return
 
 
-def get_departures_for_station(all_departure_info:dict, station_main_label: str) -> List[dict]:
+def get_departures_for_station(all_departure_info:dict, station_main_label: str) -> List[DepartureInfo]:
     departures = list(filter(
         lambda station: station.get("mainLabel") == station_main_label,
         all_departure_info.get("pubtr")
     ))[0].get("departures")
 
     for dep in departures:
-        dep["day"] = datetime.now().day
+        dep["station"] = station_main_label
         try:
-            for delete_me in  [key for key in dep.keys() if key not in ["delay", "delay_0", "cancelled", "datetime", "day"]]:
+            for delete_me in  [key for key in dep.keys() if key not in ["delay", "destination", "cancelled", "datetime", "station"]]:
                 # del changing, but unncessary props that make comparison hard
                 del dep[delete_me]
         except:
             continue
 
-    return departures
+        
 
-def ferry_start_from_argentina(start_time_ernst_august: str, all_departure_info: dict):
-    argentina_departures = get_departures_for_station(all_departure_info, "Argentinienbrücke")
-
-    start_time_ernst_august_dt = datetime.strptime(start_time_ernst_august, "%H:%M")
-
-    for departure in argentina_departures:
-        if departure.get("cancelled", False):
-            continue
-        if abs(
-            (
-                datetime.strptime(departure.get("datetime"), "%H:%M")
-                - start_time_ernst_august_dt
-            ).total_seconds()
-        ) <= 300:
-            return departure.get("datetime")
+    return [DepartureInfo(**dep) for dep in departures]
 
 
 def warn_delays_or_cancellations(payload):
-    departures = get_departures_for_station(payload, "Ernst-August-Schleuse")
 
-    if updated_departures := check_for_depature_updates(departures):
+    if updated_departures := check_for_depature_updates(payload):
         for update in updated_departures:
             # check for delay
-            if update.get("delay", 0) != 0 and int(update.get("delay")) > 0:
+            if update.effective_delay_min >= 5 and int(update.delay) >= 3:  # update.delay -> delay since last communicated delay
                 post_message_to_telegram(
-                    f"Die Fähre mit Abfahrtszeit um {update.get("datetime")} hat {update.get("delay")} Min. Verspätung"
+                    f"Die Fähre mit Abfahrtszeit um {update.schedule_departure_time_str} hat {update.effective_delay_min} Min. Verspätung"
                 )
             # check for cancellation
-            if update.get("cancelled", False):
-                msg = f"Die Fähre mit Abfahrtszeit um {update.get("datetime")} fährt nicht"
-                # check if goes from
-                if argentina_start_time := ferry_start_from_argentina(update.get("datetime"), payload):
-                    msg = f"{msg} von Ernst-August-Schleuse. Abfahrt Argentinienbrücke: {argentina_start_time}"
-                else:
-                    msg = f"{msg}! (Fällt komplett aus!)"
-
+            if update.cancelled:
+                msg = f"Die Fähre mit planm. Abfahrtszeit um {update.schedule_departure_time_str} fährt nicht von Ernst-August-Schleuse."
+                
+                if update.matching_argentina_dep:
+                    if update.matching_argentina_dep.cancelled:
+                        msg = f"{msg} Auch nicht von Argentinienbrücke. (Fällt komplett aus!)"
+                    else:
+                        msg = f"{msg} Abfahrt Argentinienbrücke: {update.matching_argentina_dep.effective_dep_time_str}"
                 post_message_to_telegram(msg)
+
+            else:
+                # previously cancelled, but now running.
+                msg = f"Die Fähre mit planm. Abfahrtszeit um {update.schedule_departure_time_str} fährt jetzt doch von Ernst-August! Um {update.effective_dep_time_str}"
+                post_message_to_telegram(msg)
+
+    else:
+        # debug print
+        print("no updates", datetime.now(), get_departures_for_station(payload, "Ernst-August-Schleuse"))
 
     """
     [{'city': 'hamburg', 'datetime': '21:45', 'delay_0': '0', 'destination': 'Landungsbrücken', 'img': './images/73.svg', 'label-1': 'Landungsbrücken', 'line': '73', 'providerName': 'hvv', 'time': 8, 'timeMinForSorting': 8}]
     """
 
-def check_for_depature_updates(received_departures:List[dict]):
-    updates = []
-    for new_dep_info in received_departures:
-        timestr = new_dep_info.get("datetime")
-        old_dep_info = departure_info.get(timestr)
-        # save new info
-        departure_info[timestr] = new_dep_info
+def find_matching_argentina_departure(ernst_dep: DepartureInfo, argentina_deps: List[DepartureInfo]) -> DepartureInfo|None:
+    for argentina_dep in argentina_deps:
+        if 0 < (argentina_dep.effective_dep_time - ernst_dep.effective_dep_time).total_seconds() <= 300:
+            return argentina_dep
 
-        if old_dep_info != new_dep_info:
-            updates.append(new_dep_info)
 
-        # return new/changed departures
-        return updates
+def check_for_depature_updates(payload: dict) -> List[DepartureInfo]:
+    received_departures_ernst :List[DepartureInfo] = get_departures_for_station(payload, "Ernst-August-Schleuse")
+    received_departures_argentinien : List[DepartureInfo] = get_departures_for_station(payload, "Argentinienbrücke")
+    updates_to_communicate = []
+
+    # datetime is changing. 
+    # iterate over all known departures and replace? 
+
+    for new_dep_info in received_departures_ernst:
+        # first try to find matching argentina departures
+        new_dep_info.matching_argentina_dep = find_matching_argentina_departure(new_dep_info, received_departures_argentinien)
+
+    for new_dep_info_ in received_departures_ernst:
+        timestr = new_dep_info.schedule_departure_time_str
+        
+        # try to find know info to check for relevant updates to that info
+        old_dep_info: DepartureInfo|None = known_departure_infos.get(timestr, None)
+        
+        if not old_dep_info:
+            if not new_dep_info.cancelled and new_dep_info.effective_delay_min < 5:
+                # irrelevant depature info
+                continue
+        else:
+            # relevant update to a known delayed/cancelled departure?
+            if (old_dep_info.effective_dep_time - new_dep_info.effective_dep_time).total_seconds()< 180:
+                if old_dep_info.cancelled == new_dep_info.cancelled:
+                    # no news on the actual departure, 
+                    # check if we got news, whether the ferry goes from argentinienbrücke:
+                    if old_dep_info.matching_argentina_dep is None and new_dep_info.matching_argentina_dep is None:
+                        # also no news whether the ferry goes from argentinienbrücke instead
+                        continue
+
+            if old_dep_info.matching_argentina_dep is not None and new_dep_info.matching_argentina_dep is not None:
+                # updated argentina info.
+                if (new_dep_info.matching_argentina_dep.effective_delay_min - old_dep_info.matching_argentina_dep.effective_delay_min) < 5 \
+                and new_dep_info.matching_argentina_dep.cancelled == old_dep_info.matching_argentina_dep.cancelled:
+                    # irrelevant update
+                    continue
+
+        # save and communicate updated info
+        known_departure_infos[timestr] = new_dep_info
+        updates_to_communicate.append(new_dep_info)
+
+    # return new/changed departures
+    return updates_to_communicate
 
 
 def forward_running_text_if_relevant(payload):
