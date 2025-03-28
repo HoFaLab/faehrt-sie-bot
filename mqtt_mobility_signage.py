@@ -145,9 +145,9 @@ def check_for_depature_updates(payload: dict) -> List[DepartureInfo]:
                 # irrelevant depature info
                 continue
 
-        if not new_dep_info.matching_argentina_dep:
-            # wait for argentinienbrücken info. it will be communicated in a few min.
-            continue 
+            elif not new_dep_info.matching_argentina_dep:
+                # wait for argentinienbrücken info. it will be communicated in a few min.
+                continue 
 
         else:
             # relevant update to a known delayed/cancelled departure?
