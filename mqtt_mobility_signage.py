@@ -137,7 +137,7 @@ def check_for_depature_updates(payload: dict) -> List[DepartureInfo]:
 
     for new_dep_info in received_departures_ernst:
         timestr = new_dep_info.schedule_departure_time_str
-        fallback_timestr = (new_dep_info.effective_dep_time - timedelta(minutes=1)).strftime("%H:%M")  # sometimes is set as a minute later, i dont know why
+        fallback_timestr = (new_dep_info.schedule_departure_time - timedelta(minutes=1)).strftime("%H:%M")  # sometimes is set as a minute later, i dont know why
         # try to find know info to check for relevant updates to that info
         old_dep_info: DepartureInfo|None = known_departure_infos.get(timestr, known_departure_infos.get(fallback_timestr, None))
         
@@ -146,9 +146,9 @@ def check_for_depature_updates(payload: dict) -> List[DepartureInfo]:
                 # irrelevant depature info
                 continue
 
-            elif not new_dep_info.matching_argentina_dep:
+            elif new_dep_info.cancelled and not new_dep_info.matching_argentina_dep:
                 # wait for argentinienbrücken info. it will be communicated in a few min.
-                continue 
+                continue
 
         else:
             # relevant update to a known delayed/cancelled departure?
