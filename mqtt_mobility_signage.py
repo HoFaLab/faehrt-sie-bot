@@ -151,7 +151,7 @@ def check_for_depature_updates(payload: dict) -> List[DepartureInfo]:
 
         else:
             # relevant update to a known delayed/cancelled departure?
-            if (old_dep_info.effective_dep_time - new_dep_info.effective_dep_time).total_seconds()< 180:
+            if (new_dep_info.effective_dep_time - old_dep_info.effective_dep_time).total_seconds() < 180:
                 if old_dep_info.cancelled == new_dep_info.cancelled:
                     # no news on the actual departure, 
                     # check if we got news, whether the ferry goes from argentinienbrücke:
