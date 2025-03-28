@@ -1,4 +1,5 @@
 from datetime import datetime
+from datetime import timedelta
 from typing import List
 
 import paho.mqtt.client as mqtt
@@ -136,9 +137,9 @@ def check_for_depature_updates(payload: dict) -> List[DepartureInfo]:
 
     for new_dep_info in received_departures_ernst:
         timestr = new_dep_info.schedule_departure_time_str
-        
+        fallback_timestr = (new_dep_info.effective_dep_time - timedelta(minutes=1)).strftime("%H:%M")  # sometimes is set as a minute later, i dont know why
         # try to find know info to check for relevant updates to that info
-        old_dep_info: DepartureInfo|None = known_departure_infos.get(timestr, None)
+        old_dep_info: DepartureInfo|None = known_departure_infos.get(timestr, known_departure_infos.get(fallback_timestr, None))
         
         if not old_dep_info:
             if not new_dep_info.cancelled and new_dep_info.effective_delay_min < 5:
